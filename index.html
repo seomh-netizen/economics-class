@@ -1,0 +1,694 @@
+<!doctype html>
+<html lang="ko">
+<head>
+
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f8fafc">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="format-detection" content="telephone=no">
+
+<meta charset="utf-8">
+<title>경제 수업 인터랙티브 그래프</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;font-family:"Malgun Gothic","Apple SD Gothic Neo",Arial,sans-serif;background:#fff;color:#111827}
+body{overflow:hidden}
+.topbar{
+  height:64px;display:flex;align-items:center;gap:8px;flex-wrap:nowrap;
+  padding:8px 12px;border-bottom:1px solid #d1d5db;background:#f8fafc
+}
+.brand{font-weight:900;font-size:18px;white-space:nowrap;margin-right:4px}
+.tabs{display:flex;gap:6px;overflow-x:auto;flex:1}
+.tab,.fs{
+  border:1px solid #cbd5e1;background:#fff;border-radius:9px;padding:8px 10px;
+  font-weight:800;cursor:pointer;white-space:nowrap;font-size:13px
+}
+.tab.active{background:#111827;color:#fff;border-color:#111827}
+.stage{height:calc(100vh - 64px);width:100%;position:relative;overflow:hidden;background:#fff}
+.page{position:absolute;inset:0;display:none;padding:20px 28px}
+.page.active{display:block}
+h1{font-size:32px;margin:0 0 6px}
+.sub{font-size:18px;color:#6b7280;margin-bottom:12px;line-height:1.5}
+.layout{display:grid;grid-template-columns:minmax(0,3fr) minmax(280px,1fr);gap:18px;height:calc(100% - 74px)}
+.card{border:1px solid #d1d5db;border-radius:16px;padding:14px;background:#fff;min-height:0}
+.controls{background:#f8fafc;display:flex;flex-direction:column;justify-content:center}
+svg{width:100%;height:calc(100% - 80px);min-height:380px;display:block}
+.result,.summary{margin-top:8px;padding:10px 12px;border-radius:10px;background:#f3f4f6;font-weight:700;line-height:1.55;font-size:15px}
+label{font-weight:800;display:block;margin-bottom:6px}
+input[type=range]{width:100%;margin:6px 0 10px}
+.value{font-size:21px;font-weight:900;margin-bottom:14px}
+.note{font-size:14px;color:#6b7280;line-height:1.65;margin-top:12px}
+button.reset{border:1px solid #9ca3af;background:#fff;border-radius:9px;padding:9px 12px;font-weight:800;cursor:pointer}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:14px;font-weight:700;margin-bottom:4px}
+.lineKey{display:inline-block;width:25px;border-top:4px solid;vertical-align:middle;margin-right:5px}
+.dash{border-top-style:dashed}
+@media(max-width:900px){
+ body{overflow:auto}.topbar{height:auto;flex-wrap:wrap}.stage{height:auto}.page{position:relative;display:none}.page.active{display:block}
+ .layout{grid-template-columns:1fr;height:auto}.card{min-height:450px}.controls{min-height:auto}svg{height:430px}
+}
+
+/* ===== 스마트폰·태블릿 최적화 ===== */
+svg{
+  width:100%;
+  height:auto !important;
+  aspect-ratio:760 / 470;
+  min-height:0 !important;
+  display:block;
+  touch-action:pan-y;
+}
+input[type=range]{
+  min-height:44px;
+  accent-color:#111827;
+  touch-action:pan-x;
+}
+.tab,.fs,button.reset{min-height:44px}
+.tabs{-webkit-overflow-scrolling:touch}
+.card{overflow:visible}
+
+@media(max-width:900px){
+  html,body{width:100%;min-height:100%;height:auto;overflow-x:hidden;overflow-y:auto}
+  .topbar{
+    position:sticky;top:0;z-index:50;
+    height:auto;padding:8px;background:#f8fafc
+  }
+  .brand{width:100%;font-size:17px}
+  .tabs{width:100%;overflow-x:auto;padding-bottom:4px}
+  .tab{font-size:14px;padding:9px 12px}
+  .fs{display:none}
+  .stage{height:auto;min-height:0;overflow:visible}
+  .page{
+    position:relative;inset:auto;
+    padding:14px 10px 28px;
+    min-height:0;
+  }
+  .page.active{display:block}
+  h1{font-size:25px;line-height:1.25;margin-bottom:5px}
+  .sub{font-size:15px;line-height:1.45;margin-bottom:10px}
+  .layout{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    height:auto;
+  }
+  .card{
+    width:100%;
+    min-height:0 !important;
+    padding:8px;
+    border-radius:12px;
+  }
+  .controls{
+    padding:14px;
+    order:2;
+  }
+  .result,.summary{font-size:14px;line-height:1.5}
+  .note{font-size:15px !important;line-height:1.7 !important}
+  .value{font-size:20px}
+}
+
+@media(max-width:520px){
+  .page{padding-left:6px;padding-right:6px}
+  .card{padding:5px}
+  h1{font-size:22px}
+  .sub{font-size:14px}
+  svg{aspect-ratio:760 / 500}
+}
+
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="brand">경제 수업 그래프</div>
+  <div class="tabs">
+    <button class="tab active" data-page="p1">1 합리적 소비</button>
+    <button class="tab" data-page="p2">2 수요량의 변동</button>
+    <button class="tab" data-page="p3">3 공급량의 변동</button>
+    <button class="tab" data-page="p5">4 수요의 변동</button>
+    <button class="tab" data-page="p6">5 공급의 변동</button>
+    <button class="tab" data-page="p4">6 시장균형</button>
+    <button class="tab" data-page="p7">7 소비자·생산자 잉여</button>
+    <button class="tab" data-page="p8">8 가격상한·가격하한</button>
+    <button class="tab" data-page="p9">9 수요의 가격탄력성</button>
+    <button class="tab" data-page="p10">10 공급의 가격탄력성</button>
+    <button class="tab" data-page="p11">11 조세 부과</button>
+    <button class="tab" data-page="p12">12 보조금 지급</button>
+    <button class="tab" data-page="p13">13 외부효과</button>
+  </div>
+  <button class="fs" id="fs">⛶ 전체화면</button>
+</div>
+
+<div class="stage">
+
+<section class="page active" id="p1">
+<h1>합리적 소비의 원리</h1>
+<div class="sub">소비량을 움직이며 한계편익(MB)과 한계비용(MC)을 비교해 보세요. MB = MC에서 총순편익이 최대가 됩니다.</div>
+<div class="layout">
+<div class="card"><svg id="consumerGraph" viewBox="0 0 760 470" role="img" aria-label="합리적 소비의 원리 그래프">
+<rect x="0" y="0" width="760" height="470" fill="white"/>
+<line x1="78" y1="398" x2="735" y2="398" stroke="#111827" stroke-width="2"/>
+<line x1="78" y1="24" x2="78" y2="398" stroke="#111827" stroke-width="2"/>
+<line x1="78" y1="282.9" x2="735" y2="282.9" stroke="#2563eb" stroke-width="5"/>
+<path d="M 78 52.8 L 160.1 110.3 L 242.3 167.8 L 324.4 225.4 L 406.5 282.9 L 488.6 320.3 L 570.8 346.2 L 652.9 363.5 L 735 377.9" fill="none" stroke="#dc2626" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="406.5" cy="282.9" r="9" fill="white" stroke="#111827" stroke-width="3"/>
+<text x="560" y="265" font-size="20" font-weight="900" fill="#2563eb">MC = 가격</text>
+<text x="560" y="340" font-size="20" font-weight="900" fill="#dc2626">MB (한계편익)</text>
+<text x="406.5" y="245" font-size="17" font-weight="900" text-anchor="middle" fill="#111827">MB = MC</text>
+<text x="406.5" y="455" font-size="18" font-weight="800" text-anchor="middle" fill="#111827">소비량 (Q)</text>
+</svg><div class="result" id="consumerResult"></div></div>
+<div class="card controls">
+<label>소비량(Q)</label>
+<input id="consumerQ" type="range" min="0" max="8" value="0" step="1">
+<div class="value">Q = <span id="consumerQV">0</span></div>
+<div class="note" style="font-size:17px;line-height:1.9">
+<span style="color:#dc2626;font-weight:900">MB &gt; MC</span> → 더 소비<br>
+<b>MB = MC</b> → 최적 소비량<br>
+<span style="color:#2563eb;font-weight:900">MB &lt; MC</span> → 소비 중단
+</div>
+<button class="reset" id="consumerReset" style="margin-top:14px">처음부터 보기</button>
+</div></div>
+</section>
+
+<section class="page" id="p2">
+<h1>가격 변동에 따른 수요량 변화</h1>
+<div class="sub">가격이 변하면 수요곡선은 이동하지 않고 같은 수요곡선 위에서 수요량이 변합니다.</div>
+<div class="layout">
+<div class="card"><svg id="demandQty"></svg><div class="result" id="demandQtyResult"></div></div>
+<div class="card controls"><label>가격(P)</label><input id="dp" type="range" min="10" max="90" value="70" step="10"><div class="value" id="dpv"></div><div class="note">가격 ↑ → 수요량 ↓<br>가격 ↓ → 수요량 ↑</div></div>
+</div>
+</section>
+
+<section class="page" id="p3">
+<h1>가격 변동에 따른 공급량 변화</h1>
+<div class="sub">가격이 변하면 공급곡선은 이동하지 않고 같은 공급곡선 위에서 공급량이 변합니다.</div>
+<div class="layout">
+<div class="card"><svg id="supplyQty"></svg><div class="result" id="supplyQtyResult"></div></div>
+<div class="card controls"><label>가격(P)</label><input id="sp" type="range" min="10" max="90" value="70" step="10"><div class="value" id="spv"></div><div class="note">가격 ↑ → 공급량 ↑<br>가격 ↓ → 공급량 ↓</div></div>
+</div>
+</section>
+
+<section class="page" id="p4">
+<h1>수요·공급의 변동과 시장균형</h1>
+<div class="sub">수요와 공급이 변동하면 균형가격과 균형거래량이 어떻게 달라지는지 확인해 보세요.</div>
+<div class="layout">
+<div class="card"><svg id="eq"></svg><div class="summary" id="eqResult"></div></div>
+<div class="card controls">
+<label>수요의 변동 <span id="dsv"></span></label><input id="ds" type="range" min="-30" max="30" value="0" step="5">
+<label>공급의 변동 <span id="ssv"></span></label><input id="ss" type="range" min="-30" max="30" value="0" step="5">
+<button class="reset" id="eqReset">초기 상태</button>
+<div class="note">원래 곡선은 실선, 이동한 곡선은 점선<br><span style="color:#dc2626;font-weight:900">수요곡선: 빨간색</span> / <span style="color:#2563eb;font-weight:900">공급곡선: 파란색</span></div>
+</div></div>
+</section>
+
+<section class="page" id="p5">
+<h1>수요의 변동</h1>
+<div class="sub">가격 이외의 요인이 변하면 수요곡선 자체가 좌우로 이동합니다.</div>
+<div class="layout">
+<div class="card">
+<div class="legend"><span><i class="lineKey" style="border-color:#dc2626"></i>D₀</span><span><i class="lineKey dash" style="border-color:#dc2626"></i>D₁</span></div>
+<svg id="dShiftGraph"></svg><div class="result" id="dShiftResult"></div></div>
+<div class="card controls"><label>수요의 변동</label><input id="dShift" type="range" min="-30" max="30" value="0" step="5"><div class="value" id="dShiftV"></div><div class="note">수요 증가 → 오른쪽 이동<br>수요 감소 → 왼쪽 이동</div></div>
+</div>
+</section>
+
+<section class="page" id="p6">
+<h1>공급의 변동</h1>
+<div class="sub">가격 이외의 요인이 변하면 공급곡선 자체가 좌우로 이동합니다.</div>
+<div class="layout">
+<div class="card">
+<div class="legend"><span><i class="lineKey" style="border-color:#2563eb"></i>S₀</span><span><i class="lineKey dash" style="border-color:#2563eb"></i>S₁</span></div>
+<svg id="sShiftGraph"></svg><div class="result" id="sShiftResult"></div></div>
+<div class="card controls"><label>공급의 변동</label><input id="sShift" type="range" min="-30" max="30" value="0" step="5"><div class="value" id="sShiftV"></div><div class="note">공급 증가 → 오른쪽 이동<br>공급 감소 → 왼쪽 이동</div></div>
+</div>
+</section>
+
+
+
+<section class="page" id="p7">
+<h1>소비자잉여와 생산자잉여</h1>
+<div class="sub">시장가격을 움직이며 소비자잉여와 생산자잉여의 크기가 어떻게 달라지는지 확인해 보세요.</div>
+<div class="layout">
+  <div class="card"><svg id="surplusGraph"></svg><div class="summary" id="surplusResult"></div></div>
+  <div class="card controls">
+    <label>시장가격(P)</label>
+    <input id="surplusP" type="range" min="10" max="90" value="50" step="5">
+    <div class="value">P = <span id="surplusPV">50</span></div>
+    <div class="note">
+      <span style="color:#dc2626;font-weight:900">수요곡선 아래·가격선 위</span> → 소비자잉여<br>
+      <span style="color:#2563eb;font-weight:900">가격선 아래·공급곡선 위</span> → 생산자잉여
+    </div>
+    <button class="reset" id="surplusReset" style="margin-top:14px">균형가격으로</button>
+  </div>
+</div>
+</section>
+
+<section class="page" id="p8">
+<h1>가격상한제와 가격하한제</h1>
+<div class="sub">정부가 정한 규제가격과 시장균형가격을 비교하며 초과수요·초과공급을 확인해 보세요.</div>
+<div class="layout">
+  <div class="card"><svg id="priceControlGraph"></svg><div class="summary" id="priceControlResult"></div></div>
+  <div class="card controls">
+    <label>정책 선택</label>
+    <select id="pcType" style="font-size:17px;padding:9px;border:1px solid #9ca3af;border-radius:9px;margin-bottom:14px">
+      <option value="ceiling">가격상한제</option>
+      <option value="floor">가격하한제</option>
+    </select>
+    <label>규제가격(P)</label>
+    <input id="pcP" type="range" min="10" max="90" value="40" step="5">
+    <div class="value">P = <span id="pcPV">40</span></div>
+    <div class="note">균형가격은 50입니다.<br>상한가격이 균형가격보다 낮으면 <b>초과수요</b>, 하한가격이 균형가격보다 높으면 <b>초과공급</b>이 발생합니다.</div>
+  </div>
+</div>
+</section>
+
+<section class="page" id="p9">
+<h1>수요의 가격탄력성</h1>
+<div class="sub">수요곡선의 반응 정도와 가격을 움직이며 가격 변화에 대한 수요량의 민감도를 비교해 보세요.</div>
+<div class="layout">
+  <div class="card"><svg id="dElasticGraph"></svg><div class="summary" id="dElasticResult"></div></div>
+  <div class="card controls">
+    <label>수요량의 반응 정도</label>
+    <input id="dElasticK" type="range" min="5" max="20" value="10" step="1">
+    <div class="value">반응계수 = <span id="dElasticKV">1.0</span></div>
+    <label>현재 가격(P)</label>
+    <input id="dElasticP" type="range" min="20" max="80" value="50" step="5">
+    <div class="value">P = <span id="dElasticPV">50</span></div>
+    <div class="note">같은 가격 변화에도 수요량이 크게 변할수록 수요는 더 탄력적입니다.</div>
+  </div>
+</div>
+</section>
+
+<section class="page" id="p10">
+<h1>공급의 가격탄력성</h1>
+<div class="sub">공급곡선의 반응 정도와 가격을 움직이며 가격 변화에 대한 공급량의 민감도를 비교해 보세요.</div>
+<div class="layout">
+  <div class="card"><svg id="sElasticGraph"></svg><div class="summary" id="sElasticResult"></div></div>
+  <div class="card controls">
+    <label>공급량의 반응 정도</label>
+    <input id="sElasticK" type="range" min="5" max="20" value="10" step="1">
+    <div class="value">반응계수 = <span id="sElasticKV">1.0</span></div>
+    <label>현재 가격(P)</label>
+    <input id="sElasticP" type="range" min="20" max="80" value="50" step="5">
+    <div class="value">P = <span id="sElasticPV">50</span></div>
+    <div class="note">같은 가격 변화에도 공급량이 크게 변할수록 공급은 더 탄력적입니다.</div>
+  </div>
+</div>
+</section>
+
+<section class="page" id="p11">
+<h1>조세 부과와 시장균형</h1>
+<div class="sub">단위당 세금을 높여 보면서 소비자가격, 생산자가격, 거래량, 조세수입과 사중손실의 변화를 확인해 보세요.</div>
+<div class="layout">
+  <div class="card"><svg id="taxGraph"></svg><div class="summary" id="taxResult"></div></div>
+  <div class="card controls">
+    <label>조세 부과 대상</label>
+    <select id="taxTarget" style="font-size:17px;padding:9px;border:1px solid #9ca3af;border-radius:9px;margin-bottom:14px">
+      <option value="producer">생산자에게 부과</option>
+      <option value="consumer">소비자에게 부과</option>
+    </select>
+    <label>단위당 조세(t)</label>
+    <input id="taxT" type="range" min="0" max="60" value="20" step="5">
+    <div class="value">t = <span id="taxTV">20</span></div>
+    <div class="note">
+      생산자 과세 → <span style="color:#2563eb;font-weight:900">공급곡선 이동</span><br>
+      소비자 과세 → <span style="color:#dc2626;font-weight:900">수요곡선 이동</span><br>
+      어느 쪽에 법적으로 부과해도 같은 단위세라면 최종 거래량과 경제적 부담은 같습니다.<br>
+      직사각형 = 정부 조세수입 · 삼각형 = 사중손실
+    </div>
+    <button class="reset" id="taxReset" style="margin-top:14px">세금 0으로</button>
+  </div>
+</div>
+</section>
+
+
+<section class="page" id="p12">
+<h1>보조금 지급과 시장균형</h1>
+<div class="sub">생산자에게 단위당 보조금을 지급할 때 소비자가격, 생산자가 받는 가격, 거래량과 정부 지출이 어떻게 변하는지 확인해 보세요.</div>
+<div class="layout">
+  <div class="card"><svg id="subsidyGraph"></svg><div class="summary" id="subsidyResult"></div></div>
+  <div class="card controls">
+    <label>보조금 지급 대상</label>
+    <select id="subsidyTarget" style="font-size:17px;padding:9px;border:1px solid #9ca3af;border-radius:9px;margin-bottom:14px">
+      <option value="producer">생산자에게 지급</option>
+      <option value="consumer">소비자에게 지급</option>
+    </select>
+    <label>단위당 보조금(s)</label>
+    <input id="subsidyS" type="range" min="0" max="60" value="20" step="5">
+    <div class="value">s = <span id="subsidySV">20</span></div>
+    <div class="note">
+      생산자 보조금 → <span style="color:#2563eb;font-weight:900">공급곡선 이동</span><br>
+      소비자 보조금 → <span style="color:#dc2626;font-weight:900">수요곡선 이동</span><br>
+      어느 쪽에 지급해도 같은 단위 보조금이라면 최종 거래량과 경제적 귀착은 같습니다.<br>
+      정부의 보조금 지출 = <b>단위당 보조금 × 거래량</b>
+    </div>
+    <button class="reset" id="subsidyReset" style="margin-top:14px">보조금 0으로</button>
+  </div>
+</div>
+</section>
+
+<section class="page" id="p13">
+<h1>외부효과와 사회적 최적</h1>
+<div class="sub">외부효과의 종류와 크기를 바꾸며 시장균형과 사회적으로 바람직한 거래량의 차이를 확인해 보세요.</div>
+<div class="layout">
+  <div class="card"><svg id="externalGraph"></svg><div class="summary" id="externalResult"></div></div>
+  <div class="card controls">
+    <label>외부효과 유형</label>
+    <select id="externalType" style="font-size:17px;padding:9px;border:1px solid #9ca3af;border-radius:9px;margin-bottom:14px">
+      <option value="negative">생산의 부정적 외부효과</option>
+      <option value="positive">소비의 긍정적 외부효과</option>
+    </select>
+    <label>외부효과의 크기</label>
+    <input id="externalM" type="range" min="0" max="40" value="20" step="5">
+    <div class="value">크기 = <span id="externalMV">20</span></div>
+    <div class="note">
+      부정적 외부효과 → 시장 거래량이 사회적 최적보다 <b>많아짐</b><br>
+      긍정적 외부효과 → 시장 거래량이 사회적 최적보다 <b>적어짐</b>
+    </div>
+  </div>
+</div>
+</section>
+
+</div>
+
+<script>
+const tabs=[...document.querySelectorAll('.tab')];
+tabs.forEach(b=>b.addEventListener('click',()=>{
+ tabs.forEach(x=>x.classList.remove('active'));b.classList.add('active');
+ document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+ document.getElementById(b.dataset.page).classList.add('active');
+ setTimeout(renderAll,20);
+}));
+document.getElementById('fs').addEventListener('click',async()=>{
+ try{ if(!document.fullscreenElement) await document.documentElement.requestFullscreen(); else await document.exitFullscreen(); }catch(e){}
+});
+
+function setup(svg){
+ const W=760,H=470,L=78,R=25,T=24,B=72;
+ svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+ const x=q=>L+q/110*(W-L-R), y=p=>T+(110-p)/110*(H-T-B);
+ return {W,H,L,R,T,B,x,y};
+}
+function ln(x1,y1,x2,y2,c,w=1,d=''){return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${c}" stroke-width="${w}" ${d?`stroke-dasharray="${d}"`:''}/>`}
+function tx(x,y,t,z=13,a='middle',w='400',c='#374151'){return `<text x="${x}" y="${y}" font-size="${z}" text-anchor="${a}" font-weight="${w}" fill="${c}">${t}</text>`}
+function axes(svg,xlabel){
+ const {W,H,L,R,T,B,x,y}=setup(svg);let s='';
+ for(let v=0;v<=100;v+=20){s+=ln(x(v),T,x(v),H-B,'#e5e7eb')+ln(L,y(v),W-R,y(v),'#e5e7eb');s+=tx(x(v),H-B+24,v)+tx(L-10,y(v)+4,v,13,'end')}
+ s+=ln(L,H-B,W-R,H-B,'#111827',2)+ln(L,T,L,H-B,'#111827',2);
+ s+=tx((L+W-R)/2,H-16,xlabel,16,'middle','700','#111827');
+ s+=`<text x="20" y="${(T+H-B)/2}" font-size="16" font-weight="700" fill="#111827" transform="rotate(-90 20 ${(T+H-B)/2})" text-anchor="middle">가격 (P)</text>`;
+ return {s,...setup(svg)};
+}
+
+
+
+const dp=document.getElementById('dp'), dpv=document.getElementById('dpv'),
+      sp=document.getElementById('sp'), spv=document.getElementById('spv'),
+      ds=document.getElementById('ds'), dsv=document.getElementById('dsv'),
+      ss=document.getElementById('ss'), ssv=document.getElementById('ssv'),
+      eqReset=document.getElementById('eqReset'),
+      dShift=document.getElementById('dShift'), dShiftV=document.getElementById('dShiftV'),
+      sShift=document.getElementById('sShift'), sShiftV=document.getElementById('sShiftV'),
+      consumerQ=document.getElementById('consumerQ'),
+      consumerQV=document.getElementById('consumerQV'),
+      consumerReset=document.getElementById('consumerReset');
+
+function renderDQ(){const svg=document.getElementById('demandQty');let {s,W,H,L,R,T,B,x,y}=axes(svg,'수요량 (Q)');let p=+dp.value,q=100-p;s+=`<path d="M ${x(10)} ${y(90)} L ${x(90)} ${y(10)}" fill="none" stroke="#dc2626" stroke-width="5"/>`;s+=ln(L,y(p),x(q),y(p),'#dc2626',2,'7 6')+ln(x(q),y(p),x(q),H-B,'#dc2626',2,'7 6')+`<circle cx="${x(q)}" cy="${y(p)}" r="8" fill="#dc2626"/>`;svg.innerHTML=s;dpv.textContent=p;demandQtyResult.innerHTML=`가격 <b>${p}</b> → 수요량 <b>${q}</b>. 같은 수요곡선 위에서 이동합니다.`}
+dp.addEventListener('input',renderDQ);
+function renderSQ(){const svg=document.getElementById('supplyQty');let {s,W,H,L,R,T,B,x,y}=axes(svg,'공급량 (Q)');let p=+sp.value,q=p;s+=`<path d="M ${x(10)} ${y(10)} L ${x(90)} ${y(90)}" fill="none" stroke="#2563eb" stroke-width="5"/>`;s+=ln(L,y(p),x(q),y(p),'#2563eb',2,'7 6')+ln(x(q),y(p),x(q),H-B,'#2563eb',2,'7 6')+`<circle cx="${x(q)}" cy="${y(p)}" r="8" fill="#2563eb"/>`;svg.innerHTML=s;spv.textContent=p;supplyQtyResult.innerHTML=`가격 <b>${p}</b> → 공급량 <b>${q}</b>. 같은 공급곡선 위에서 이동합니다.`}
+sp.addEventListener('input',renderSQ);
+
+function renderEq(){const svg=document.getElementById('eq');let {s,W,H,L,R,T,B,x,y}=axes(svg,'거래량 (Q)');let dsV=+ds.value,ssV=+ss.value;q=(100+dsV+ssV)/2;p=(100+dsV-ssV)/2;
+ s+=`<path d="M ${x(0)} ${y(100)} L ${x(100)} ${y(0)}" fill="none" stroke="#dc2626" stroke-width="4"/>`;
+ s+=`<path d="M ${x(0)} ${y(0)} L ${x(100)} ${y(100)}" fill="none" stroke="#2563eb" stroke-width="4"/>`;
+ let d1a=Math.max(0,dsV),d1p=100+dsV-d1a,d1b=Math.min(110,100+dsV),d1p2=100+dsV-d1b;if(d1p>110){d1p=110;d1a=100+dsV-110}
+ let s1a=Math.max(0,ssV),s1p=s1a-ssV,s1b=Math.min(110,100+ssV),s1p2=s1b-ssV;
+ s+=`<path d="M ${x(d1a)} ${y(d1p)} L ${x(d1b)} ${y(d1p2)}" fill="none" stroke="#dc2626" stroke-width="5" stroke-dasharray="10 7"/>`;
+ s+=`<path d="M ${x(s1a)} ${y(s1p)} L ${x(s1b)} ${y(s1p2)}" fill="none" stroke="#2563eb" stroke-width="5" stroke-dasharray="10 7"/>`;
+ s+=ln(L,y(p),x(q),y(p),'#111827',2,'6 6')+ln(x(q),y(p),x(q),H-B,'#111827',2,'6 6')+`<circle cx="${x(q)}" cy="${y(p)}" r="8" fill="#111827"/>`;
+ svg.innerHTML=s;dsv.textContent=dsV;ssv.textContent=ssV;eqResult.innerHTML=`균형가격 <b>${p.toFixed(1)}</b>, 균형거래량 <b>${q.toFixed(1)}</b>`}
+ds.addEventListener('input',renderEq);ss.addEventListener('input',renderEq);eqReset.addEventListener('click',()=>{ds.value=0;ss.value=0;renderEq()});
+
+function renderDShift(){const svg=document.getElementById('dShiftGraph');let {s,W,H,L,R,T,B,x,y}=axes(svg,'수요량 (Q)');let sh=+dShift.value;s+=`<path d="M ${x(0)} ${y(100)} L ${x(100)} ${y(0)}" fill="none" stroke="#dc2626" stroke-width="4"/>`;let a=Math.max(0,sh),p1=100+sh-a,b=Math.min(110,100+sh),p2=100+sh-b;if(p1>110){p1=110;a=100+sh-110}s+=`<path d="M ${x(a)} ${y(p1)} L ${x(b)} ${y(p2)}" fill="none" stroke="#dc2626" stroke-width="5" stroke-dasharray="10 7"/>`;if(sh!==0){s+=`<defs><marker id="arrD" markerWidth="5" markerHeight="5" refX="5" refY="3" orient="auto"><path d="M0,1 L0,5 L5,3 z" fill="#dc2626"/></marker></defs><line x1="${x(50)}" y1="${y(50)}" x2="${x(50+sh)}" y2="${y(50)}" stroke="#dc2626" stroke-width="3" marker-end="url(#arrD)"/>`};svg.innerHTML=s;dShiftV.textContent=sh>0?'수요 증가':sh<0?'수요 감소':'변동 없음';dShiftResult.innerHTML=sh>0?'수요 증가 → <b>오른쪽 이동</b>':sh<0?'수요 감소 → <b>왼쪽 이동</b>':'원래 수요곡선 D₀는 고정되어 있습니다.'}
+dShift.addEventListener('input',renderDShift);
+
+function renderSShift(){const svg=document.getElementById('sShiftGraph');let {s,W,H,L,R,T,B,x,y}=axes(svg,'공급량 (Q)');let sh=+sShift.value;s+=`<path d="M ${x(0)} ${y(0)} L ${x(100)} ${y(100)}" fill="none" stroke="#2563eb" stroke-width="4"/>`;let a=Math.max(0,sh),p1=a-sh,b=Math.min(110,100+sh),p2=b-sh;s+=`<path d="M ${x(a)} ${y(p1)} L ${x(b)} ${y(p2)}" fill="none" stroke="#2563eb" stroke-width="5" stroke-dasharray="10 7"/>`;if(sh!==0){s+=`<defs><marker id="arrS" markerWidth="5" markerHeight="5" refX="5" refY="3" orient="auto"><path d="M0,1 L0,5 L5,3 z" fill="#2563eb"/></marker></defs><line x1="${x(50)}" y1="${y(50)}" x2="${x(50+sh)}" y2="${y(50)}" stroke="#2563eb" stroke-width="3" marker-end="url(#arrS)"/>`};svg.innerHTML=s;sShiftV.textContent=sh>0?'공급 증가':sh<0?'공급 감소':'변동 없음';sShiftResult.innerHTML=sh>0?'공급 증가 → <b>오른쪽 이동</b>':sh<0?'공급 감소 → <b>왼쪽 이동</b>':'원래 공급곡선 S₀는 고정되어 있습니다.'}
+sShift.addEventListener('input',renderSShift);
+
+
+function renderConsumer(){
+ const svg=document.getElementById('consumerGraph'); if(!svg)return;
+ const W=760,H=470,L=78,R=25,T=24,B=72;
+ svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+ const mb=[120,100,80,60,40,27,18,12,7], mc=40, opt=4, maxY=130;
+ const x=q=>L+q/8*(W-L-R), y=v=>T+(maxY-v)/maxY*(H-T-B);
+ const q=+consumerQ.value, mbNow=mb[q], net=mbNow-mc;
+ let s=`<defs><pattern id="consumerHatch" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="10" stroke="#dc2626" stroke-width="3" opacity=".35"/></pattern></defs>`;
+
+ for(let v=0;v<=120;v+=20){
+   s+=ln(L,y(v),W-R,y(v),'#e5e7eb');
+   s+=tx(L-10,y(v)+4,v,15,'end','700','#374151');
+ }
+ for(let i=0;i<=8;i++){
+   s+=ln(x(i),H-B,x(i),H-B+7,'#111827',2);
+   s+=tx(x(i),H-B+28,i,16,'middle','700','#374151');
+ }
+ s+=ln(L,H-B,W-R,H-B,'#111827',2)+ln(L,T,L,H-B,'#111827',2);
+ s+=tx((L+W-R)/2,H-16,'소비량 (Q)',18,'middle','800','#111827');
+ s+=`<text x="20" y="${(T+H-B)/2}" font-size="18" font-weight="800" fill="#111827" transform="rotate(-90 20 ${(T+H-B)/2})" text-anchor="middle">편익 · 비용</text>`;
+
+ // 선택한 수량의 점선까지, 위는 MB·아래는 MC로 둘러싸인 부분만 빗금 처리.
+ // 최적량 이후에는 MB<MC 구간을 총순편익 빗금에 포함하지 않는다.
+ const shadeEnd=Math.min(q,opt);
+ if(shadeEnd>0){
+   let d=`M ${x(0)} ${y(mc)} L ${x(0)} ${y(mb[0])}`;
+   for(let i=1;i<=shadeEnd;i++) d+=` L ${x(i)} ${y(mb[i])}`;
+   d+=` L ${x(shadeEnd)} ${y(mc)} Z`;
+   s+=`<path d="${d}" fill="url(#consumerHatch)" stroke="#dc2626" stroke-width="1.5"/>`;
+ }
+
+ let mbPath='';
+ mb.forEach((v,i)=>{mbPath+=`${i?' L':'M'} ${x(i)} ${y(v)}`});
+ s+=`<path d="${mbPath}" fill="none" stroke="#dc2626" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>`;
+ s+=ln(L,y(mc),W-R,y(mc),'#2563eb',5);
+
+ // 현재 선택 수량을 나타내는 세로 점선
+ s+=ln(x(q),y(mbNow),x(q),H-B,'#111827',2,'7 6');
+ s+=`<circle cx="${x(q)}" cy="${y(mbNow)}" r="7" fill="#111827" stroke="#fff" stroke-width="2"/>`;
+ s+=`<circle cx="${x(opt)}" cy="${y(mc)}" r="9" fill="#fff" stroke="#111827" stroke-width="3"/>`;
+
+ s+=tx(x(6.15),y(17)-12,'MB (한계편익)',20,'middle','900','#dc2626');
+ s+=tx(x(6.15),y(mc)-14,'MC = 가격',20,'middle','900','#2563eb');
+ s+=tx(x(opt),y(mc)-32,'MB = MC · 최적 소비량',17,'middle','900','#111827');
+
+ svg.innerHTML=s;
+ consumerQV.textContent=q;
+
+ // 연속적인 그래프의 총순편익은 MB-MC 사이의 면적(사다리꼴 합)으로 계산.
+ let total=0;
+ for(let i=0;i<q;i++) total+=((mb[i]-mc)+(mb[i+1]-mc))/2;
+
+ let msg='';
+ if(q<opt) msg=`<span style="color:#dc2626;font-weight:900">MB &gt; MC</span> : 더 소비하면 총순편익이 증가합니다.`;
+ else if(q===opt) msg=`<b>MB = MC</b> : 총순편익이 최대인 최적 소비량입니다.`;
+ else msg=`<span style="color:#2563eb;font-weight:900">MB &lt; MC</span> : 추가 소비는 총순편익을 감소시킵니다.`;
+
+ consumerResult.innerHTML=`현재 <b>Q = ${q}</b> · MB <b style="color:#dc2626">${mbNow}</b> · MC <b style="color:#2563eb">${mc}</b> · 총순편익 <b>${total.toFixed(1)}</b><br>${msg}`;
+}
+consumerQ.addEventListener('input',renderConsumer);
+consumerReset.addEventListener('click',()=>{consumerQ.value=0;renderConsumer()});
+
+
+
+function poly(points,fill,opacity=.22,stroke='none',sw=1){
+ return `<polygon points="${points.map(p=>p.join(',')).join(' ')}" fill="${fill}" fill-opacity="${opacity}" stroke="${stroke}" stroke-width="${sw}"/>`;
+}
+
+function renderSurplus(){
+ const svg=document.getElementById('surplusGraph'); if(!svg)return;
+ let {s,W,H,L,R,T,B,x,y}=axes(svg,'거래량 (Q)');
+ const p=+surplusP.value, qd=100-p, qs=p, qt=Math.min(qd,qs);
+ const cs=Math.max(0, ((100-p)*qt - qt*qt/2));
+ const ps=Math.max(0, (p*qt - qt*qt/2));
+ if(qt>0){
+   s+=poly([[x(0),y(p)],[x(0),y(100)],[x(qt),y(100-qt)],[x(qt),y(p)]],'#dc2626',.16);
+   s+=poly([[x(0),y(p)],[x(0),y(0)],[x(qt),y(qt)],[x(qt),y(p)]],'#2563eb',.16);
+ }
+ s+=`<path d="M ${x(0)} ${y(100)} L ${x(100)} ${y(0)}" fill="none" stroke="#dc2626" stroke-width="5"/>`;
+ s+=`<path d="M ${x(0)} ${y(0)} L ${x(100)} ${y(100)}" fill="none" stroke="#2563eb" stroke-width="5"/>`;
+ s+=ln(L,y(p),x(Math.max(qd,qs)),y(p),'#111827',2,'7 6');
+ s+=ln(x(qt),y(p),x(qt),H-B,'#111827',2,'7 6');
+ s+=`<circle cx="${x(qt)}" cy="${y(p)}" r="7" fill="#111827"/>`;
+ svg.innerHTML=s; surplusPV.textContent=p;
+ let status=p===50?'균형가격입니다.':p<50?'가격이 균형보다 낮아 공급량이 거래를 제한합니다.':'가격이 균형보다 높아 수요량이 거래를 제한합니다.';
+ surplusResult.innerHTML=`실제 거래량 <b>${qt}</b> · 소비자잉여 <b>${cs.toFixed(0)}</b> · 생산자잉여 <b>${ps.toFixed(0)}</b><br>${status}`;
+}
+surplusP.addEventListener('input',renderSurplus);
+surplusReset.addEventListener('click',()=>{surplusP.value=50;renderSurplus()});
+
+function renderPriceControl(){
+ const svg=document.getElementById('priceControlGraph'); if(!svg)return;
+ let {s,W,H,L,R,T,B,x,y}=axes(svg,'거래량 (Q)');
+ const p=+pcP.value, qd=100-p, qs=p, type=pcType.value;
+ s+=`<path d="M ${x(0)} ${y(100)} L ${x(100)} ${y(0)}" fill="none" stroke="#dc2626" stroke-width="5"/>`;
+ s+=`<path d="M ${x(0)} ${y(0)} L ${x(100)} ${y(100)}" fill="none" stroke="#2563eb" stroke-width="5"/>`;
+ s+=ln(L,y(p),x(Math.max(qd,qs)),y(p),'#7c3aed',4,'9 6');
+ s+=ln(x(qd),y(p),x(qd),H-B,'#dc2626',2,'6 5')+ln(x(qs),y(p),x(qs),H-B,'#2563eb',2,'6 5');
+ s+=tx(x(qd),H-B+45,`Qd ${qd}`,14,'middle','800','#dc2626')+tx(x(qs),H-B+62,`Qs ${qs}`,14,'middle','800','#2563eb');
+ svg.innerHTML=s; pcPV.textContent=p;
+ let msg='';
+ if(type==='ceiling'){
+   if(p<50) msg=`유효한 가격상한제 → 초과수요 <b>${qd-qs}</b>`;
+   else msg='상한가격이 균형가격 이상이므로 시장균형을 제한하지 않습니다.';
+ }else{
+   if(p>50) msg=`유효한 가격하한제 → 초과공급 <b>${qs-qd}</b>`;
+   else msg='하한가격이 균형가격 이하이므로 시장균형을 제한하지 않습니다.';
+ }
+ priceControlResult.innerHTML=`균형가격 <b>50</b> · 규제가격 <b>${p}</b><br>${msg}`;
+}
+pcType.addEventListener('change',()=>{pcP.value=pcType.value==='ceiling'?40:60;renderPriceControl()});
+pcP.addEventListener('input',renderPriceControl);
+
+function renderDElastic(){
+ const svg=document.getElementById('dElasticGraph'); if(!svg)return;
+ let {s,W,H,L,R,T,B,x,y}=axes(svg,'수요량 (Q)');
+ const k=+dElasticK.value/10, p=+dElasticP.value, q=Math.max(0,Math.min(100,50+k*(50-p)));
+ const q0=Math.max(0,Math.min(100,50+k*(50-50)));
+ const elast=(q>0)?Math.abs(k*p/q):0;
+ let pA=Math.max(0,50-50/k), pB=Math.min(100,50+50/k);
+ let qA=50+k*(50-pA), qB=50+k*(50-pB);
+ s+=`<path d="M ${x(qA)} ${y(pA)} L ${x(qB)} ${y(pB)}" fill="none" stroke="#dc2626" stroke-width="5"/>`;
+ s+=ln(L,y(p),x(q),y(p),'#111827',2,'7 6')+ln(x(q),y(p),x(q),H-B,'#111827',2,'7 6')+`<circle cx="${x(q)}" cy="${y(p)}" r="8" fill="#dc2626"/>`;
+ svg.innerHTML=s; dElasticKV.textContent=k.toFixed(1); dElasticPV.textContent=p;
+ const cls=elast>1.05?'탄력적':elast<.95?'비탄력적':'단위탄력적에 가까움';
+ dElasticResult.innerHTML=`현재 수요량 <b>${q.toFixed(1)}</b> · 점탄력성 약 <b>${elast.toFixed(2)}</b> → <b>${cls}</b>`;
+}
+dElasticK.addEventListener('input',renderDElastic); dElasticP.addEventListener('input',renderDElastic);
+
+function renderSElastic(){
+ const svg=document.getElementById('sElasticGraph'); if(!svg)return;
+ let {s,W,H,L,R,T,B,x,y}=axes(svg,'공급량 (Q)');
+ const k=+sElasticK.value/10, p=+sElasticP.value, q=Math.max(0,Math.min(100,50+k*(p-50)));
+ const elast=(q>0)?Math.abs(k*p/q):0;
+ let pA=Math.max(0,50-50/k), pB=Math.min(100,50+50/k);
+ let qA=50+k*(pA-50), qB=50+k*(pB-50);
+ s+=`<path d="M ${x(qA)} ${y(pA)} L ${x(qB)} ${y(pB)}" fill="none" stroke="#2563eb" stroke-width="5"/>`;
+ s+=ln(L,y(p),x(q),y(p),'#111827',2,'7 6')+ln(x(q),y(p),x(q),H-B,'#111827',2,'7 6')+`<circle cx="${x(q)}" cy="${y(p)}" r="8" fill="#2563eb"/>`;
+ svg.innerHTML=s; sElasticKV.textContent=k.toFixed(1); sElasticPV.textContent=p;
+ const cls=elast>1.05?'탄력적':elast<.95?'비탄력적':'단위탄력적에 가까움';
+ sElasticResult.innerHTML=`현재 공급량 <b>${q.toFixed(1)}</b> · 점탄력성 약 <b>${elast.toFixed(2)}</b> → <b>${cls}</b>`;
+}
+sElasticK.addEventListener('input',renderSElastic); sElasticP.addEventListener('input',renderSElastic);
+
+function renderTax(){
+ const svg=document.getElementById('taxGraph'); if(!svg)return;
+ let {s,W,H,L,R,T,B,x,y}=axes(svg,'거래량 (Q)');
+ const t=+taxT.value, target=taxTarget.value;
+ const q=(100-t)/2, pc=(100+t)/2, pp=(100-t)/2;
+ const revenue=t*q, dwl=.5*t*(50-q);
+
+ if(t>0){
+   s+=`<rect x="${x(0)}" y="${y(pc)}" width="${x(q)-x(0)}" height="${y(pp)-y(pc)}" fill="#7c3aed" fill-opacity=".14"/>`;
+   s+=poly([[x(q),y(pc)],[x(50),y(50)],[x(q),y(pp)]],'#6b7280',.18);
+ }
+ // Original D and S
+ s+=`<path d="M ${x(0)} ${y(100)} L ${x(100)} ${y(0)}" fill="none" stroke="#dc2626" stroke-width="4"/>`;
+ s+=`<path d="M ${x(0)} ${y(0)} L ${x(100)} ${y(100)}" fill="none" stroke="#2563eb" stroke-width="4"/>`;
+
+ if(target==='producer'){
+   // Producer tax: supply shifts upward by t: P = Q+t
+   s+=`<path d="M ${x(0)} ${y(t)} L ${x(Math.max(0,100-t))} ${y(100)}" fill="none" stroke="#2563eb" stroke-width="5" stroke-dasharray="10 7"/>`;
+   s+=tx(x(77),y(77)-10,'S',16,'middle','900','#2563eb');
+   s+=tx(x(Math.max(15,72-t/2)),y(Math.min(95,72+t/2))-10,"S′",16,'middle','900','#2563eb');
+ }else{
+   // Consumer tax: demand as faced by sellers shifts downward by t: P = 100-Q-t
+   s+=`<path d="M ${x(0)} ${y(100-t)} L ${x(Math.max(0,100-t))} ${y(0)}" fill="none" stroke="#dc2626" stroke-width="5" stroke-dasharray="10 7"/>`;
+   s+=tx(x(78),y(22),'D',16,'middle','900','#dc2626');
+   s+=tx(x(Math.max(15,72-t/2)),y(Math.max(8,28-t/2)),"D′",16,'middle','900','#dc2626');
+ }
+ s+=ln(L,y(pc),x(q),y(pc),'#111827',2,'6 5')+ln(L,y(pp),x(q),y(pp),'#111827',2,'6 5')+ln(x(q),y(pc),x(q),H-B,'#111827',2,'6 5');
+ svg.innerHTML=s; taxTV.textContent=t;
+ const who=target==='producer'?'생산자 과세 → 공급곡선 이동':'소비자 과세 → 수요곡선 이동';
+ taxResult.innerHTML=`<b>${who}</b><br>소비자가 실제 부담하는 가격 <b>${pc.toFixed(1)}</b> · 생산자가 실제 받는 가격 <b>${pp.toFixed(1)}</b> · 거래량 <b>${q.toFixed(1)}</b><br>조세수입 <b>${revenue.toFixed(1)}</b> · 사중손실 <b>${dwl.toFixed(1)}</b>`;
+}
+taxTarget.addEventListener('change',renderTax);
+taxT.addEventListener('input',renderTax); taxReset.addEventListener('click',()=>{taxT.value=0;renderTax()});
+
+function renderSubsidy(){
+ const svg=document.getElementById('subsidyGraph'); if(!svg)return;
+ let {s,W,H,L,R,T,B,x,y}=axes(svg,'거래량 (Q)');
+ const sub=+subsidyS.value, target=subsidyTarget.value;
+ const q=(100+sub)/2, pc=(100-sub)/2, pp=(100+sub)/2;
+ const spending=sub*q;
+
+ if(sub>0){
+   s+=`<rect x="${x(0)}" y="${y(pp)}" width="${x(q)-x(0)}" height="${y(pc)-y(pp)}" fill="#7c3aed" fill-opacity=".13"/>`;
+ }
+ // Original D and S
+ s+=`<path d="M ${x(0)} ${y(100)} L ${x(100)} ${y(0)}" fill="none" stroke="#dc2626" stroke-width="4"/>`;
+ s+=`<path d="M ${x(0)} ${y(0)} L ${x(100)} ${y(100)}" fill="none" stroke="#2563eb" stroke-width="4"/>`;
+
+ if(target==='producer'){
+   // Producer subsidy: market supply shifts downward/right: P = Q-sub
+   const q0=Math.min(100,sub), p0=0, q1=100, p1=100-sub;
+   s+=`<path d="M ${x(q0)} ${y(p0)} L ${x(q1)} ${y(p1)}" fill="none" stroke="#2563eb" stroke-width="5" stroke-dasharray="10 7"/>`;
+   s+=tx(x(78),y(78)-10,'S',16,'middle','900','#2563eb');
+   s+=tx(x(86),y(Math.max(4,86-sub))-10,"S′",16,'middle','900','#2563eb');
+ }else{
+   // Consumer subsidy: willingness/market demand as faced by sellers shifts upward/right: P = 100-Q+sub
+   const q0=0,p0=Math.min(100,100+sub), q1=Math.min(100,100+sub),p1=Math.max(0,100-q1+sub);
+   // visible segment in plotting range: starts where P=100, q=sub, ends q=100,p=sub
+   s+=`<path d="M ${x(Math.min(100,sub))} ${y(100)} L ${x(100)} ${y(Math.min(100,sub))}" fill="none" stroke="#dc2626" stroke-width="5" stroke-dasharray="10 7"/>`;
+   s+=tx(x(78),y(22),'D',16,'middle','900','#dc2626');
+   s+=tx(x(86),y(Math.min(96,14+sub)),"D′",16,'middle','900','#dc2626');
+ }
+ s+=ln(L,y(pc),x(q),y(pc),'#111827',2,'6 5')+ln(L,y(pp),x(q),y(pp),'#111827',2,'6 5')+ln(x(q),y(pp),x(q),H-B,'#111827',2,'6 5');
+ svg.innerHTML=s; subsidySV.textContent=sub;
+ const who=target==='producer'?'생산자 보조금 → 공급곡선 이동':'소비자 보조금 → 수요곡선 이동';
+ subsidyResult.innerHTML=`<b>${who}</b><br>소비자가 실제 지불하는 가격 <b>${pc.toFixed(1)}</b> · 생산자가 실제 받는 가격 <b>${pp.toFixed(1)}</b> · 거래량 <b>${q.toFixed(1)}</b><br>정부의 보조금 지출 <b>${spending.toFixed(1)}</b>`;
+}
+subsidyTarget.addEventListener('change',renderSubsidy);
+subsidyS.addEventListener('input',renderSubsidy);
+subsidyReset.addEventListener('click',()=>{subsidyS.value=0;renderSubsidy()});
+
+function renderExternal(){
+ const svg=document.getElementById('externalGraph'); if(!svg)return;
+ let {s,W,H,L,R,T,B,x,y}=axes(svg,'거래량 (Q)');
+ const m=+externalM.value, type=externalType.value;
+ let qm=50, pm=50, qs, ps;
+ if(type==='negative'){
+   qs=(100-m)/2; ps=100-qs;
+   s+=`<path d="M ${x(0)} ${y(100)} L ${x(100)} ${y(0)}" fill="none" stroke="#dc2626" stroke-width="5"/>`;
+   s+=`<path d="M ${x(0)} ${y(0)} L ${x(100)} ${y(100)}" fill="none" stroke="#2563eb" stroke-width="4"/>`;
+   s+=`<path d="M ${x(0)} ${y(m)} L ${x(Math.min(100,100-m))} ${y(100)}" fill="none" stroke="#0f766e" stroke-width="5" stroke-dasharray="10 7"/>`;
+   s+=tx(x(78),y(22),'MPC',16,'middle','900','#2563eb')+tx(x(68),y(Math.min(95,68+m)),'MSC',16,'middle','900','#0f766e');
+ }else{
+   qs=(100+m)/2; ps=qs;
+   s+=`<path d="M ${x(0)} ${y(100)} L ${x(100)} ${y(0)}" fill="none" stroke="#dc2626" stroke-width="4"/>`;
+   s+=`<path d="M ${x(0)} ${y(0)} L ${x(100)} ${y(100)}" fill="none" stroke="#2563eb" stroke-width="5"/>`;
+   s+=`<path d="M ${x(Math.max(0,m))} ${y(100)} L ${x(100)} ${y(Math.max(0,m))}" fill="none" stroke="#b91c1c" stroke-width="5" stroke-dasharray="10 7"/>`;
+   s+=tx(x(78),y(22),'MPB',16,'middle','900','#dc2626')+tx(x(72),y(Math.max(12,28+m)),'MSB',16,'middle','900','#b91c1c');
+ }
+ s+=`<circle cx="${x(qm)}" cy="${y(pm)}" r="7" fill="#111827"/>`;
+ s+=`<circle cx="${x(qs)}" cy="${y(ps)}" r="8" fill="white" stroke="#111827" stroke-width="3"/>`;
+ s+=ln(x(qm),y(pm),x(qm),H-B,'#111827',2,'6 5')+ln(x(qs),y(ps),x(qs),H-B,'#111827',2,'6 5');
+ svg.innerHTML=s; externalMV.textContent=m;
+ const relation=type==='negative'?'시장 거래량이 사회적 최적보다 많습니다.':'시장 거래량이 사회적 최적보다 적습니다.';
+ externalResult.innerHTML=`시장균형 거래량 <b>${qm}</b> · 사회적 최적 거래량 <b>${qs.toFixed(1)}</b><br>${relation}`;
+}
+externalType.addEventListener('change',renderExternal); externalM.addEventListener('input',renderExternal);
+
+
+// 모바일 브라우저 대응: 화면 회전/리사이즈 뒤에도 현재 그래프를 다시 그림
+window.addEventListener('resize',()=>{clearTimeout(window.__econResize);window.__econResize=setTimeout(renderAll,120)});
+window.addEventListener('orientationchange',()=>setTimeout(renderAll,180));
+
+// 슬라이더 조작 시 pointer/touch 환경에서도 즉시 반영
+document.querySelectorAll('input[type="range"]').forEach(el=>{
+  el.addEventListener('change',renderAll);
+});
+
+function renderAll(){renderConsumer();renderDQ();renderSQ();renderEq();renderDShift();renderSShift();renderSurplus();renderPriceControl();renderDElastic();renderSElastic();renderTax();renderSubsidy();renderExternal()}
+renderAll();
+</script>
+</body>
+</html>
